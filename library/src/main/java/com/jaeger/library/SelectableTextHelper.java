@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Build;
 import android.support.annotation.ColorInt;
+import android.support.annotation.LayoutRes;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.Spanned;
@@ -22,11 +23,11 @@ import android.widget.TextView;
 
 /**
  * Created by Jaeger on 16/8/30.
- *
+ * <p>
  * Email: chjie.jaeger@gmail.com
  * GitHub: https://github.com/laobie
  */
-public class SelectableTextHelper {
+public class SelectableTextHelper implements View.OnClickListener {
 
     private final static int DEFAULT_SELECTION_LENGTH = 1;
     private static final int DEFAULT_SHOW_DURATION = 100;
@@ -40,6 +41,7 @@ public class SelectableTextHelper {
     private Context mContext;
     private TextView mTextView;
     private Spannable mSpannable;
+    private int popLayoutRes;
 
     private int mTouchX;
     private int mTouchY;
@@ -53,12 +55,15 @@ public class SelectableTextHelper {
 
     private ViewTreeObserver.OnPreDrawListener mOnPreDrawListener;
     ViewTreeObserver.OnScrollChangedListener mOnScrollChangedListener;
+    OnSelectedItemClickListener itemClickListener;
 
     public SelectableTextHelper(Builder builder) {
         mTextView = builder.mTextView;
         mContext = mTextView.getContext();
         mSelectedColor = builder.mSelectedColor;
         mCursorHandleColor = builder.mCursorHandleColor;
+        itemClickListener = builder.mItemClickListener;
+        popLayoutRes = builder.mPopLayoutRes;
         mCursorHandleSize = TextLayoutUtil.dp2px(mContext, builder.mCursorHandleSizeInDp);
         init();
     }
@@ -132,7 +137,11 @@ public class SelectableTextHelper {
         };
         mTextView.getViewTreeObserver().addOnScrollChangedListener(mOnScrollChangedListener);
 
-        mOperateWindow = new OperateWindow(mContext);
+        if(popLayoutRes == 0) {
+            mOperateWindow = new OperateWindow(mContext);
+        }else{
+            mOperateWindow = new OperateWindow(mContext,popLayoutRes);
+        }
     }
 
     private void postShowSelectView(int duration) {
@@ -247,6 +256,13 @@ public class SelectableTextHelper {
         mOperateWindow = null;
     }
 
+    @Override
+    public void onClick(View view) {
+        if (itemClickListener != null) {
+            itemClickListener.onItemClick(view, mSelectionInfo.mSelectionContent);
+        }
+    }
+
     /**
      * Operate windows : copy, select all
      */
@@ -258,14 +274,33 @@ public class SelectableTextHelper {
         private int mWidth;
         private int mHeight;
 
+        public OperateWindow(final Context context, @LayoutRes int layoutRes) {
+            View contentView = LayoutInflater.from(context).inflate(layoutRes, null);
+            contentView.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            mWidth = contentView.getMeasuredWidth();
+            mHeight = contentView.getMeasuredHeight();
+            mWindow = new PopupWindow(contentView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, false);
+            mWindow.setClippingEnabled(false);
+            if (contentView instanceof ViewGroup) {
+                ViewGroup viewGroup = (ViewGroup) contentView;
+                int childCount = viewGroup.getChildCount();
+                for (int i = 0; i < childCount; i++) {
+                    View childView = viewGroup.getChildAt(i);
+                    childView.setOnClickListener(SelectableTextHelper.this);
+                }
+            } else {
+                contentView.setOnClickListener(SelectableTextHelper.this);
+            }
+        }
+
         public OperateWindow(final Context context) {
             View contentView = LayoutInflater.from(context).inflate(R.layout.layout_operate_windows, null);
             contentView.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             mWidth = contentView.getMeasuredWidth();
             mHeight = contentView.getMeasuredHeight();
-            mWindow =
-                new PopupWindow(contentView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, false);
+            mWindow = new PopupWindow(contentView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, false);
             mWindow.setClippingEnabled(false);
 
             contentView.findViewById(R.id.tv_copy).setOnClickListener(new View.OnClickListener() {
@@ -273,7 +308,7 @@ public class SelectableTextHelper {
                 public void onClick(View v) {
                     ClipboardManager clip = (ClipboardManager) mContext.getSystemService(Context.CLIPBOARD_SERVICE);
                     clip.setPrimaryClip(
-                        ClipData.newPlainText(mSelectionInfo.mSelectionContent, mSelectionInfo.mSelectionContent));
+                            ClipData.newPlainText(mSelectionInfo.mSelectionContent, mSelectionInfo.mSelectionContent));
                     if (mSelectListener != null) {
                         mSelectListener.onTextSelected(mSelectionInfo.mSelectionContent);
                     }
@@ -441,10 +476,10 @@ public class SelectableTextHelper {
             Layout layout = mTextView.getLayout();
             if (isLeft) {
                 mPopupWindow.update((int) layout.getPrimaryHorizontal(mSelectionInfo.mStart) - mWidth + getExtraX(),
-                    layout.getLineBottom(layout.getLineForOffset(mSelectionInfo.mStart)) + getExtraY(), -1, -1);
+                        layout.getLineBottom(layout.getLineForOffset(mSelectionInfo.mStart)) + getExtraY(), -1, -1);
             } else {
                 mPopupWindow.update((int) layout.getPrimaryHorizontal(mSelectionInfo.mEnd) + getExtraX(),
-                    layout.getLineBottom(layout.getLineForOffset(mSelectionInfo.mEnd)) + getExtraY(), -1, -1);
+                        layout.getLineBottom(layout.getLineForOffset(mSelectionInfo.mEnd)) + getExtraY(), -1, -1);
             }
         }
 
@@ -475,14 +510,26 @@ public class SelectableTextHelper {
         private TextView mTextView;
         private int mCursorHandleColor = 0xFF1379D6;
         private int mSelectedColor = 0xFFAFE1F4;
+        private int mPopLayoutRes;
         private float mCursorHandleSizeInDp = 24;
+        private OnSelectedItemClickListener mItemClickListener;
 
         public Builder(TextView textView) {
             mTextView = textView;
         }
 
+        public Builder(TextView textView,@LayoutRes int popLayoutRes) {
+            mTextView = textView;
+            mPopLayoutRes = popLayoutRes;
+        }
+
         public Builder setCursorHandleColor(@ColorInt int cursorHandleColor) {
             mCursorHandleColor = cursorHandleColor;
+            return this;
+        }
+
+        public Builder setOnSelectedItemClickListener(OnSelectedItemClickListener itemClickListener) {
+            mItemClickListener = itemClickListener;
             return this;
         }
 
