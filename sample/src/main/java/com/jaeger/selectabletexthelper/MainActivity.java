@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity implements OnSelectedItemCli
         mTvTest = (TextView) findViewById(R.id.tv_test);
         //mTvTest.setTextIsSelectable(true);
 
-        mSelectableTextHelper = new SelectableTextHelper.Builder(mTvTest,R.layout.layout_operate_windows)
+        mSelectableTextHelper = new SelectableTextHelper.Builder(mTvTest, R.layout.layout_operate_windows)
                 .setSelectedColor(getResources().getColor(R.color.selected_blue))
                 .setCursorHandleSizeInDp(20)
                 .setOnSelectedItemClickListener(this)
@@ -49,6 +49,14 @@ public class MainActivity extends AppCompatActivity implements OnSelectedItemCli
 
     @Override
     public void onItemClick(View v, String mSelectionText) {
-        Toast.makeText(this,mSelectionText,Toast.LENGTH_SHORT).show();
+        switch (v.getId()) {
+            case R.id.tv_copy:
+                Toast.makeText(this, "tv_copy---" + mSelectionText, Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.tv_select_all:
+                Toast.makeText(this, "tv_select_all---" + mSelectionText, Toast.LENGTH_SHORT).show();
+                break;
+        }
+
     }
 }
