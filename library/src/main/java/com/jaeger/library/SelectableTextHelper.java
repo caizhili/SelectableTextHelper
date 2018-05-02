@@ -169,7 +169,7 @@ public class SelectableTextHelper implements View.OnClickListener {
         }
     };
 
-    private void hideSelectView() {
+    public void hideSelectView() {
         isHide = true;
         if (mStartHandle != null) {
             mStartHandle.dismiss();
@@ -182,7 +182,7 @@ public class SelectableTextHelper implements View.OnClickListener {
         }
     }
 
-    private void resetSelectionInfo() {
+    public void resetSelectionInfo() {
         mSelectionInfo.mSelectionContent = null;
         if (mSpannable != null && mSpan != null) {
             mSpannable.removeSpan(mSpan);
